@@ -18,6 +18,11 @@ pro_Th17 =c(0,0,0,0,1,1,0,0,0)
 pro_iTreg=c(0,0,1,0,0,1,0,0,0)
 pro_Tr1 = c(0,0,0,0,0,0,1,1,0)
 
+MicroEnv = matrix(c(pro_Th0,pro_Th1,pro_Th2,pro_Th17,pro_iTreg,pro_Tr1), ncol = length(microenvironment), byrow = TRUE)
+colnames(MicroEnv) = microenvironment
+rownames(MicroEnv) = c("pro_Th0", "pro_Th1", "pro_Th2", "pro_Th17", "pro_iTreg", "pro_Tr1")
+
+
 network = fixGenes(network, fixIndices = microenvironment, values = pro_iTreg)
 
 STG = getAttractors(network)
@@ -45,9 +50,47 @@ library(BoolNetPerturb)
 BoolNetPerturb::labelAttractors(STG, df.rules)
 
 #
-# 
-#
+# Determin Cell Differentiation 
+# > based upon microenvironment (without perturbations)
+# > display basin of attraction size for different celltypes
 
+getCellDifferentiationBasinSizes = function(network, micro_env, micro_val, insulin = 0, attractorLabels, label.rules) {
+  basinSizes = rep(0, length(attractorLabels)) 
+  names(basinSizes) = attractorLabels
+  
+  micro_val[length(micro_val)] = insulin
+  network = fixGenes(network, fixIndices = micro_env, values = micro_val)
+  
+  attr = getAttractors(network)
+  attrLabels = BoolNetPerturb::labelAttractors(attr, label.rules = label.rules)
+  
+  for (i in 1:length(attr$attractors)) {
+    if (attrLabels[i] %in% attractorLabels) {
+      basinSizes[attrLabels[i]] = basinSizes[attrLabels[i]] + attr$attractors[[i]]$basinSize
+    }
+  }
+  
+  return(basinSizes)  
+}
+
+getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_Th0, insulin = 0, attractorLabels = labels, label.rules = df.rules)
+
+# Compute entire matrix
+M = vector()
+for(i in 1:nrow(MicroEnv)) {
+  pro_mic = MicroEnv[i,]
+  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 0, attractorLabels = labels, label.rules = df.rules))
+}
+M = matrix(M, nrow = nrow(MicroEnv), byrow = TRUE)
+colnames(M) = labels
+rownames(M) = rownames(MicroEnv)
+
+library(reshape2)
+library(ggplot2)
+
+ggplot(melt(M), aes(Var2, Var1, fill=value)) + geom_tile(aes(fill = value), colour = "white") + scale_fill_gradient(low = "white", high = "steelblue")
+
+# Question: IL10+TGFB+ how is this determined (shouldn't this be the intersection between IL10 & TGFB+ which it is clearly not)
 
 #
 # Construct Cell Fate Map
@@ -58,10 +101,7 @@ BoolNetPerturb::labelAttractors(STG, df.rules)
 
 createCellFateMap = function(network, micro_env, micro_val, insulin = 0, df.rules, plot_labels) {
   micro_val[length(micro_val)] = insulin
-  print(micro_val)
-  print(network)
   network = fixGenes(network, fixIndices = micro_env, values = micro_val)
-  print(network)
   map = BoolNetPerturb::cellFateMap(network, genes = c("TBET", "IFNG", "GATA3", "IL2", "IL4", "RORGT", "IL21", "FOXP3", "TGFB", "IL10"), label.rules = df.rules)
   
   # Compute adjancency matrix & plot states
