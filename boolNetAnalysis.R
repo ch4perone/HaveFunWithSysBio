@@ -180,5 +180,17 @@ adj = createCellFateMap(network, micro_env = microenvironment, micro_val = pro_i
 # Is IL10+ = Tr1 ???
 
 
+#
+# Find ideal microenvironments
+#
+# Computes all permutations of mictoenvironments, fixes the network & computes basin of attraction for each target label (cell type)
+
+findIdealMicroenvironment = function(network, insulin = 0, label.rules, target.label) {
+  
+}
+
+
+
+
 
 #"IL10+TGFB+/iTreg", "Th1R/Th1R", "RORGT+/TGFB+"
