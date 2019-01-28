@@ -79,7 +79,7 @@ getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_va
 M = vector()
 for(i in 1:nrow(MicroEnv)) {
   pro_mic = MicroEnv[i,]
-  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 0, attractorLabels = labels, label.rules = df.rules))
+  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 1, attractorLabels = labels, label.rules = df.rules))
 }
 M = matrix(M, nrow = nrow(MicroEnv), byrow = TRUE)
 colnames(M) = labels
@@ -88,7 +88,14 @@ rownames(M) = rownames(MicroEnv)
 library(reshape2)
 library(ggplot2)
 
-ggplot(melt(M), aes(Var2, Var1, fill=value)) + geom_tile(aes(fill = value), colour = "white") + scale_fill_gradient(low = "white", high = "steelblue")
+y_ord = rownames(M)
+ggplot(melt(M), aes(Var2, ordered(Var1, rev(y_ord)) , fill=value)) +
+  geom_tile(aes(fill = value), colour = "white") +
+  scale_fill_gradient(na.value = "white", low = "white", high = "violetred3", trans = log10_trans(), limits = c(NA, 1024)) +
+  xlab("Cell type") +
+  ylab("Micro-environment")
+
+# choose colors from http://sape.inf.usi.ch/quick-reference/ggplot2/colour
 
 # Question: IL10+TGFB+ how is this determined (shouldn't this be the intersection between IL10 & TGFB+ which it is clearly not)
 
