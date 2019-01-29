@@ -94,7 +94,7 @@ getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_va
 M = vector()
 for(i in 1:nrow(MicroEnv)) {
   pro_mic = MicroEnv[i,]
-  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 0, attractorLabels = labels, label.rules = df.rules))
+  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 1, attractorLabels = labels, label.rules = df.rules))
 }
 M = matrix(M, nrow = nrow(MicroEnv), byrow = TRUE)
 colnames(M) = labels
