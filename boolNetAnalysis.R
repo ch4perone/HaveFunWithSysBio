@@ -1,7 +1,12 @@
-
+library(reshape2)
+library(ggplot2)
+library(scales)
 
 #install.packages("BoolNet")
 library("BoolNet")
+#library(devtools)
+#install_github("mar-esther23/boolnet-perturb")
+library(BoolNetPerturb)
 
 #
 # Setup and Definition
@@ -38,15 +43,16 @@ rules = c("!(TBET | GATA3 | RORGT | FOXP3 | IL10 | TGFB)", "(TBET & IFNG) & !(IL
          "RORGT & ! (IL21 | IL10)" , "FOXP3 & TGFB & ! (TBET | GATA3 | RORGT)" , "IL10 & ! (TBET | GATA3 | FOXP3 | RORGT)",
          "TGFB & ! (TBET | GATA3 | FOXP3 | RORGT)")
 
+hybrid_label = "Tbet+Gata3+Foxp3+"
+hybrid_rule = "TBET & GATA3 & FOXP3"
+
 df.rules = data.frame(labels, rules)
 
 #
 # Label attractors of STG
 #
 
-#library(devtools)
-#install_github("mar-esther23/boolnet-perturb")
-library(BoolNetPerturb)
+
 BoolNetPerturb::labelAttractors(STG, df.rules)
 
 #
@@ -54,14 +60,23 @@ BoolNetPerturb::labelAttractors(STG, df.rules)
 # > based upon microenvironment (without perturbations)
 # > display basin of attraction size for different celltypes
 
-getCellDifferentiationBasinSizes = function(network, micro_env, micro_val, insulin = 0, attractorLabels, label.rules) {
+getCellDifferentiationBasinSizes = function(network, micro_env, micro_val, insulin = 0, knockout=vector(), knockin=vector(), attractorLabels, label.rules) {
   basinSizes = rep(0, length(attractorLabels)) 
   names(basinSizes) = attractorLabels
   
+  #fix microenvironment | knock-out genes | and insulin
   micro_val[length(micro_val)] = insulin
+
+  for(gene in knockin) {
+    micro_env = c(micro_env, gene)
+    micro_val = c(micro_val, 1)
+  }
+  for(gene in knockout) {
+    micro_env = c(micro_env, gene)
+    micro_val = c(micro_val, 0)
+  }
   network = fixGenes(network, fixIndices = micro_env, values = micro_val)
-  
-  attr = getAttractors(network)
+  attr = getAttractors(network, type = "synchronous")
   attrLabels = BoolNetPerturb::labelAttractors(attr, label.rules = label.rules)
   
   for (i in 1:length(attr$attractors)) {
@@ -73,20 +88,19 @@ getCellDifferentiationBasinSizes = function(network, micro_env, micro_val, insul
   return(basinSizes)  
 }
 
-getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_Th0, insulin = 0, attractorLabels = labels, label.rules = df.rules)
+getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_Th0, knockout = "IL10", insulin = 0, attractorLabels = labels, label.rules = df.rules)
 
 # Compute entire matrix
 M = vector()
 for(i in 1:nrow(MicroEnv)) {
   pro_mic = MicroEnv[i,]
-  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 1, attractorLabels = labels, label.rules = df.rules))
+  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 0, attractorLabels = labels, label.rules = df.rules))
 }
 M = matrix(M, nrow = nrow(MicroEnv), byrow = TRUE)
 colnames(M) = labels
 rownames(M) = rownames(MicroEnv)
 
-library(reshape2)
-library(ggplot2)
+
 
 y_ord = rownames(M)
 ggplot(melt(M), aes(Var2, ordered(Var1, rev(y_ord)) , fill=value)) +
