@@ -23,12 +23,15 @@ pro_Th17 =c(0,0,0,0,1,1,0,0,0)
 pro_iTreg=c(0,0,1,0,0,1,0,0,0)
 pro_Tr1 = c(0,0,0,0,0,0,1,1,0)
 
+add_pro_Th9 = c(0,0,0,1,0,1,0,0,0)
+add_pro_Tfh = c(1,0,0,0,1,0,0,0,0) # maybe Il2e instead of IL12e
+
 MicroEnv = matrix(c(pro_Th0,pro_Th1,pro_Th2,pro_Th17,pro_iTreg,pro_Tr1), ncol = length(microenvironment), byrow = TRUE)
 colnames(MicroEnv) = microenvironment
 rownames(MicroEnv) = c("pro_Th0", "pro_Th1", "pro_Th2", "pro_Th17", "pro_iTreg", "pro_Tr1")
 
 
-network = fixGenes(network, fixIndices = microenvironment, values = pro_iTreg)
+network = fixGenes(network, fixIndices = microenvironment, values = add_pro_Th9)
 
 STG = getAttractors(network)
 plotStateGraph(STG)
@@ -82,22 +85,24 @@ getCellDifferentiationBasinSizes = function(network, micro_env, micro_val, insul
   for (i in 1:length(attr$attractors)) {
     if (attrLabels[i] %in% attractorLabels) {
       basinSizes[attrLabels[i]] = basinSizes[attrLabels[i]] + attr$attractors[[i]]$basinSize
+    } else {
+      print(attrLabels[i])
     }
   }
   
   return(basinSizes)  
 }
 
-getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_Th0, knockout = "IL10", insulin = 0, attractorLabels = labels, label.rules = df.rules)
+getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_Th0, knockout = "IL10", insulin = 0, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules)
 
 # Compute entire matrix
 M = vector()
 for(i in 1:nrow(MicroEnv)) {
   pro_mic = MicroEnv[i,]
-  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 1, attractorLabels = labels, label.rules = df.rules))
+  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 1, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules))
 }
 M = matrix(M, nrow = nrow(MicroEnv), byrow = TRUE)
-colnames(M) = labels
+colnames(M) = c(labels, "IL10+TGFB+")
 rownames(M) = rownames(MicroEnv)
 
 
@@ -109,9 +114,101 @@ ggplot(melt(M), aes(Var2, ordered(Var1, rev(y_ord)) , fill=value)) +
   xlab("Cell type") +
   ylab("Micro-environment")
 
+# statistics
+
+effectorSum = sum(M[, c("Th1", "Th2", "Th17")])
+regulatorySum = sum(M[, c("Th1R", "Th2R", "iTreg", "IL10+" , "IL10+TGFB+")])
+
+effectorSum / regulatorySum
+
+effectorSumINS = sum(INS_M[, c("Th1", "Th2", "Th17")])
+regulatorySumINS = sum(INS_M[, c("Th1R", "Th2R", "iTreg", "IL10+", "IL10+TGFB+")])
+
+effectorSumINS / regulatorySumINS
+
+# to compensate for Insulin: Use GATA3 (gene 3) => 0.6 eff/reg  (basically deletes Th2 (effector) cell types)
+
+
 # choose colors from http://sape.inf.usi.ch/quick-reference/ggplot2/colour
 
 # Question: IL10+TGFB+ how is this determined (shouldn't this be the intersection between IL10 & TGFB+ which it is clearly not)
+
+#
+# Testing asynchronous update
+#   for specific initial states
+#
+
+compareUpdateMethod = function(network, init_state, micro_env, micro_val, label.rules) {
+  fixedNet = fixGenes(network, fixIndices = micro_env, values = micro_val)
+  attr_sync = getAttractors(fixedNet, type = "synchronous", startStates = list(c(init_state, micro_val)))
+  attr_async = getAttractors(fixedNet, type = "asynchronous", startStates = list(c(init_state, micro_val)))
+  
+  sync = BoolNetPerturb::labelAttractors(attr_sync, label.rules = label.rules)
+  async = BoolNetPerturb::labelAttractors(attr_async, label.rules = label.rules)
+  
+  return(data.frame(sync, async))
+}
+
+compareUpdateMethod(network, init_state = rep(0, 10), micro_env = microenvironment, micro_val = pro_iTreg, label.rules = df.rules)
+
+
+for(i in 1:nrow(MicroEnv)) {
+  pro_mic = MicroEnv[i,]
+  cat('\n',rownames(MicroEnv)[i], ":\n")
+  result = compareUpdateMethod(network, init_state = rep(1, 10), micro_env = microenvironment, micro_val = pro_mic, label.rules = df.rules)
+  print(result$sync)
+  print(result$async)
+  cat(as.character(result$sync) == as.character(result$async), "\n")
+}
+
+# For all possible initial states
+all_states = expand.grid(rep(list(0:1), 10))
+Y = vector()
+GROUP = vector()
+
+for (k in 1:10) {
+  counter = 0
+  counter_vector = rep(0, 11) # errors in vector according number of 1's, starting with 0 1's
+  full_vector = rep(0, 11) 
+  for (j in 1:nrow(all_states) ) { # might take awhile
+    init = all_states[j,]
+    num_ones = sum(init)
+    
+    for(i in 1:nrow(MicroEnv)) {
+      pro_mic = MicroEnv[i,]
+      #cat('\n',rownames(MicroEnv)[i], ":\n")
+      result = compareUpdateMethod(network, init_state = init, micro_env = microenvironment, micro_val = pro_mic, label.rules = df.rules)
+      #cat(unlist(result), "\n")
+      
+      
+      full_vector[num_ones + 1] = full_vector[num_ones + 1] + 1
+      if(as.character(result$sync) == as.character(result$async)) {
+        counter = counter + 1
+        counter_vector[num_ones + 1] = counter_vector[num_ones + 1] + 1
+      }
+      
+      if(length(as.character(result$async)) > 1) {
+        print(2)
+      }
+      
+    }
+  }
+
+  cat("iteration: ", k, " done\n")  
+  cat("total: ", counter, " percent", counter / (1024 * nrow(MicroEnv)) * 100, "\n")
+  full_vector
+  counter_vector
+  
+  
+  Y = c(Y, counter_vector / full_vector)
+  GROUP = c(GROUP, seq(0, 10))
+} 
+
+
+df = data.frame(Y, GROUP)
+
+ggplot(df, aes(group=GROUP, y=Y, x=GROUP)) + 
+  geom_boxplot()
 
 #
 # Construct Cell Fate Map
@@ -191,8 +288,6 @@ adj = createCellFateMap(network, micro_env = microenvironment, micro_val = pro_i
 #
 # Clear Definitions of regulatory (iTreg, Th1R, Th2R, Tr1??) vs effector cells (Th1, Th2, Th17)? What about the rest??
 #
-# Is IL10+ = Tr1 ???
-
 
 #
 # Find ideal microenvironments
