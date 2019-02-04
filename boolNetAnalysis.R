@@ -93,13 +93,13 @@ getCellDifferentiationBasinSizes = function(network, micro_env, micro_val, insul
   return(basinSizes)  
 }
 
-getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_Th0, knockout = "IL10", insulin = 0, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules)
+#getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_Th0, knockout = "IL10", insulin = 0, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules)
 
 # Compute entire matrix
 M = vector()
 for(i in 1:nrow(MicroEnv)) {
   pro_mic = MicroEnv[i,]
-  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 1, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules))
+  M = c(M, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 0, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules))
 }
 M = matrix(M, nrow = nrow(MicroEnv), byrow = TRUE)
 colnames(M) = c(labels, "IL10+TGFB+")
@@ -107,13 +107,16 @@ rownames(M) = rownames(MicroEnv)
 
 
 
+
+M = M[,c(-3,-9)]
 y_ord = rownames(M)
+jpeg('basalHeatmap.jpg',units = "cm", width = 20, height = 10)
 ggplot(melt(M), aes(Var2, ordered(Var1, rev(y_ord)) , fill=value)) +
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(na.value = "white", low = "white", high = "violetred3", trans = log10_trans(), limits = c(NA, 1024)) +
   xlab("Cell type") +
   ylab("Micro-environment")
-
+dev.off()
 # statistics
 
 effectorSum = sum(M[, c("Th1", "Th2", "Th17")])
