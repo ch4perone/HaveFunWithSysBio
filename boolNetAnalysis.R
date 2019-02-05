@@ -12,7 +12,7 @@ library(BoolNetPerturb)
 # Setup and Definition
 #
 
-setwd("/home/chaperone/projects/computationalSystemBiology")
+setwd("/home/aliki/Documents/rechnergbioinformatik")
 network = loadSBML("MODEL1606020000.xml")
 
 microenvironment = c("IL12e", "IFNGe", "IL2e", "IL4e", "IL21e", "TGFBe", "IL10e", "IL27e", "INSULIN")
@@ -241,6 +241,7 @@ createCellFateMap = function(network, micro_env, micro_val, insulin = 0, df.rule
   
   # Plot using igraph
   library(igraph)
+  #Adj["Th0", "Th1"] = Adj["Th0", "Th1"] + 1
   net=graph.adjacency(Adj,mode="directed",weighted=TRUE,diag=FALSE) #the only difference between this and the weighted network code is that mode="directed"
   
   for(cellType in plot_labels) {
@@ -249,36 +250,37 @@ createCellFateMap = function(network, micro_env, micro_val, insulin = 0, df.rule
       net[from = cellType, to = cellType ] = Adj[cellType, cellType]  
     }
   }
+  #net[from = "Th0", to = "Th1" ] = Adj["Th0", "Th1"] - 1
   layout.self = matrix(-2, ncol = 2, nrow = length(plot_labels))
   rownames(layout.self) = plot_labels
   colnames(layout.self) = c("x", "y")
   
   layout.self['Th0', ] = c(0,0)
-  layout.self['Th1', ] = c(0.3,1)
-  layout.self['Th1R', ] =c(0.7,0.5)
-  layout.self['Th17', ] =c(1,0)
-  layout.self['iTreg', ]=c(0.7,-0.5)
-  layout.self['RORGT+', ]=c(0.3,-1)
-  layout.self["IL10+TGFB+", ] = c(-0.3,-1)
-  layout.self['IL10+',] = c(-0.7, -0.5)
-  layout.self['Th2R',] = c(-1, 0)
-  layout.self['Th2',] = c(-0.7, 0.5)
-  layout.self['TGFB+',] = c(-0.3, 1)
+  layout.self['Th1', ] = c(0.3,1) *3
+  layout.self['Th1R', ] =c(0.7,0.5) *3
+  layout.self['Th17', ] =c(1,0) *3
+  layout.self['iTreg', ]=c(0.7,-0.5) *3
+  #layout.self['RORGT+', ]=c(0.3,-1)
+  layout.self["IL10+TGFB+", ] = c(-0.3,-1) *3
+  layout.self['IL10+',] = c(-0.7, -0.5)  *3
+  layout.self['Th2R',] = c(-1, 0) *3
+  layout.self['Th2',] = c(-0.7, 0.5) *3
+  #layout.self['TGFB+',] = c(-0.3, 1)
 
-  layout.self['TBET+',] = c(-1, -1)
-  layout.self['GATA3+',] = c(-1, -1.5)
+  layout.self['TBET+',] = c(0.3, -1) *3
+  layout.self['GATA3+',] = c(-0.3, 1) *3
   
   print(layout.self)
   regCellTypes = c("iTreg", "Th1R", "Th2R", "Tr1", "IL10+", "TGFB+", "IL10+TGFB+")
   effCellTypes = vector() #c("Th1", "Th2", "Th17")
-  colors = c("orange", "skyblue", "green", "red", "grey")[1 + V(net)$name %in% c("Th0") + 2 * V(net)$name %in% regCellTypes + 3 * V(net)$name %in% effCellTypes  + 4 * V(net)$name %in% c("GATA3+", "TBET+")]
-    
-  plt = plot.igraph(net, vertex.color = colors, vertex.size = 28, vertex.label=V(net)$name, layout=layout.self,  vertex.label.color="black",edge.color="black",edge.width=E(net)$weight/2, edge.arrow.size=1.5)
+  colors = c("orange", "skyblue", "green", "red", "grey")[1 + V(net)$name %in% c("") + 2 * V(net)$name %in% regCellTypes + 3 * V(net)$name %in% effCellTypes  + 4 * V(net)$name %in% c("GATA3+", "TBET+", "Th0")]
+  print(Adj)
+  plt = plot.igraph(net, edge.arrow.size=0.75, vertex.color = colors, vertex.size = 32, vertex.label=V(net)$name, layout=layout.self,  vertex.label.color="black",edge.color="black",edge.width=E(net)$weight/3, edge.arrow.size=1.5)
   #plot.igraph(net, vertex.size = 20, vertex.label=V(net)$name, layout=layout.circle,vertex.label.color="black", edge.color="black")
   return(Adj)
 }
-
-adj = createCellFateMap(network, micro_env = microenvironment, micro_val = pro_iTreg, insulin = 1,  df.rules = df.rules, plot_labels = c(labels, "IL10+TGFB+"))
+plot.labels = c(labels[c(-12,-9)], "IL10+TGFB+")
+adj = createCellFateMap(network, micro_env = microenvironment, micro_val = pro_Tr1, insulin = 0,  df.rules = df.rules, plot_labels = plot.labels)
 
 #
 # Why 12 states (13), but randomly only 10 (11) are used? TGFB+ & RORGT+ dropped? Why?
