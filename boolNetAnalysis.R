@@ -110,13 +110,35 @@ rownames(M) = rownames(MicroEnv)
 
 M = M[,c(-3,-9)]
 y_ord = rownames(M)
-jpeg('basalHeatmap.jpg',units = "cm", width = 20, height = 10)
+jpeg('basalHeatmap.jpg',units = "cm" , width = 25.0, height = 15.0, res = 600)
 ggplot(melt(M), aes(Var2, ordered(Var1, rev(y_ord)) , fill=value)) +
   geom_tile(aes(fill = value), colour = "white") +
-  scale_fill_gradient(na.value = "white", low = "white", high = "violetred3", trans = log10_trans(), limits = c(NA, 1024)) +
+  scale_fill_gradient(na.value = "white", low = "thistle1", high = "deeppink3", trans = log10_trans(), limits = c(NA, 1024)) +
   xlab("Cell type") +
   ylab("Micro-environment")
 dev.off()
+
+# Compute entire INS matrix
+M_INS = vector()
+for(i in 1:nrow(MicroEnv)) {
+  pro_mic = MicroEnv[i,]
+  M_INS = c(M_INS, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, micro_val = pro_mic, insulin = 1, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules))
+}
+M_INS = matrix(M_INS, nrow = nrow(MicroEnv), byrow = TRUE)
+colnames(M_INS) = c(labels, "IL10+TGFB+")
+rownames(M_INS) = rownames(MicroEnv)
+
+
+M_INS = M_INS[,c(-3,-9)]
+y_ord = rownames(M_INS)
+jpeg('hyperHeatmap.jpg',units = "cm" , width = 25.0, height = 15.0, res = 600)
+ggplot(melt(M_INS), aes(Var2, ordered(Var1, rev(y_ord)) , fill=value)) +
+  geom_tile(aes(fill = value), colour = "white") +
+  scale_fill_gradient(na.value = "white", low = "thistle1", high = "deeppink3", trans = log10_trans(), limits = c(NA, 1024)) +
+  xlab("Cell type") +
+  ylab("Micro-environment")
+dev.off()
+
 # statistics
 
 effectorSum = sum(M[, c("Th1", "Th2", "Th17")])
@@ -124,10 +146,11 @@ regulatorySum = sum(M[, c("Th1R", "Th2R", "iTreg", "IL10+" , "IL10+TGFB+")])
 
 effectorSum / regulatorySum
 
-effectorSumINS = sum(INS_M[, c("Th1", "Th2", "Th17")])
-regulatorySumINS = sum(INS_M[, c("Th1R", "Th2R", "iTreg", "IL10+", "IL10+TGFB+")])
+effectorSumINS = sum(M_INS[, c("Th1", "Th2", "Th17")])
+regulatorySumINS = sum(M_INS[, c("Th1R", "Th2R", "iTreg", "IL10+", "IL10+TGFB+")])
 
 effectorSumINS / regulatorySumINS
+
 
 # to compensate for Insulin: Use GATA3 (gene 3) => 0.6 eff/reg  (basically deletes Th2 (effector) cell types)
 
@@ -168,8 +191,9 @@ for(i in 1:nrow(MicroEnv)) {
 all_states = expand.grid(rep(list(0:1), 10))
 Y = vector()
 GROUP = vector()
+globalAgreementVector = vector()
 
-for (k in 1:10) {
+for (k in 1:5) {
   counter = 0
   counter_vector = rep(0, 11) # errors in vector according number of 1's, starting with 0 1's
   full_vector = rep(0, 11) 
@@ -201,7 +225,7 @@ for (k in 1:10) {
   cat("total: ", counter, " percent", counter / (1024 * nrow(MicroEnv)) * 100, "\n")
   full_vector
   counter_vector
-  
+  globalAgreementVector = c(globalAgreementVector, counter / (1024 * nrow(MicroEnv)))
   
   Y = c(Y, counter_vector / full_vector)
   GROUP = c(GROUP, seq(0, 10))
@@ -210,8 +234,14 @@ for (k in 1:10) {
 
 df = data.frame(Y, GROUP)
 
-ggplot(df, aes(group=GROUP, y=Y, x=GROUP)) + 
-  geom_boxplot()
+ggplot(melt(globalAgreementVector), aes(y=value, "all states")) +
+  ylab("agreement of update methods") +
+  geom_boxplot(fill = "lightblue")
+
+ggplot(df, aes(x=GROUP, y=Y)) +
+  geom_boxplot(aes(x = GROUP),  fill = "lightblue") +
+  ylab("agreement of update methods") +
+  xlab("initial number of genes active") 
 
 #
 # Construct Cell Fate Map
