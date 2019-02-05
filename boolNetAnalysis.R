@@ -290,15 +290,15 @@ createCellFateMap = function(network, micro_env, micro_val, insulin = 0, df.rule
   layout.self['Th1R', ] =c(0.7,0.5) *3
   layout.self['Th17', ] =c(1,0) *3
   layout.self['iTreg', ]=c(0.7,-0.5) *3
-  #layout.self['RORGT+', ]=c(0.3,-1)
+  layout.self['RORGT+', ]=c(0.3,-1) *3
   layout.self["IL10+TGFB+", ] = c(-0.3,-1) *3
   layout.self['IL10+',] = c(-0.7, -0.5)  *3
   layout.self['Th2R',] = c(-1, 0) *3
   layout.self['Th2',] = c(-0.7, 0.5) *3
-  #layout.self['TGFB+',] = c(-0.3, 1)
+  layout.self['TGFB+',] = c(-0.3, 1) *3
 
-  layout.self['TBET+',] = c(0.3, -1) *3
-  layout.self['GATA3+',] = c(-0.3, 1) *3
+  layout.self['TBET+',] = c(-1.5, -0.8) *3
+  layout.self['GATA3+',] = c(-1.5, -1.3) *3
   
   print(layout.self)
   regCellTypes = c("iTreg", "Th1R", "Th2R", "Tr1", "IL10+", "TGFB+", "IL10+TGFB+")
@@ -309,8 +309,9 @@ createCellFateMap = function(network, micro_env, micro_val, insulin = 0, df.rule
   #plot.igraph(net, vertex.size = 20, vertex.label=V(net)$name, layout=layout.circle,vertex.label.color="black", edge.color="black")
   return(Adj)
 }
-plot.labels = c(labels[c(-12,-9)], "IL10+TGFB+")
-adj = createCellFateMap(network, micro_env = microenvironment, micro_val = pro_Tr1, insulin = 0,  df.rules = df.rules, plot_labels = plot.labels)
+#plot.labels = c(labels[c(-12,-9)], "IL10+TGFB+")
+plot.labels = c(labels, "IL10+TGFB+")
+adj = createCellFateMap(network, micro_env = microenvironment, micro_val = pro_iTreg, insulin = 1,  df.rules = df.rules, plot_labels = plot.labels)
 
 #
 # Why 12 states (13), but randomly only 10 (11) are used? TGFB+ & RORGT+ dropped? Why?
