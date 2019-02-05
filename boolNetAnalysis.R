@@ -86,7 +86,7 @@ getCellDifferentiationBasinSizes = function(network, micro_env, micro_val, insul
     if (attrLabels[i] %in% attractorLabels) {
       basinSizes[attrLabels[i]] = basinSizes[attrLabels[i]] + attr$attractors[[i]]$basinSize
     } else {
-      print(attrLabels[i])
+      #print(attrLabels[i])
     }
   }
   
@@ -183,7 +183,7 @@ for (gene in network$genes[1:10]) {
   M_HIV = vector()
   for(i in 1:nrow(MicroEnv)) {
     pro_mic = MicroEnv[i,]
-    M_HIV = c(M_HIV, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, knockout = gene, micro_val = pro_mic, insulin = 1, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules))
+    M_HIV = c(M_HIV, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, knockout = gene, micro_val = pro_mic, insulin = 0, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules))
   }
   M_HIV = matrix(M_HIV, nrow = nrow(MicroEnv), byrow = TRUE)
   colnames(M_HIV) = c(labels, "IL10+TGFB+")
@@ -193,12 +193,29 @@ for (gene in network$genes[1:10]) {
 }
 
 
+M_HIV = vector()
+for(i in 1:nrow(MicroEnv)) {
+  pro_mic = MicroEnv[i,]
+  M_HIV = c(M_HIV, getCellDifferentiationBasinSizes(network, micro_env = microenvironment, knockin = "GATA3", micro_val = pro_mic, insulin = 0, attractorLabels = c(labels, "IL10+TGFB+"), label.rules = df.rules))
+}
+M_HIV = matrix(M_HIV, nrow = nrow(MicroEnv), byrow = TRUE)
+colnames(M_HIV) = c(labels, "IL10+TGFB+")
+rownames(M_HIV) = rownames(MicroEnv)  
+
+jpeg('kiGATA3Heatmap.jpg',units = "cm" , width = 25.0, height = 15.0, res = 600)
+M_HIV = M_HIV[,c(-3,-9)]
+y_ord = rownames(M_HIV)
 ggplot(melt(M_HIV), aes(Var2, ordered(Var1, rev(y_ord)) , fill=value)) +
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(na.value = "white", low = "thistle1", high = "deeppink3", trans = log10_trans(), limits = c(NA, 1024)) +
   xlab("Cell type") +
   ylab("Micro-environment")
+dev.off()
 
+effectorSumHIV = sum(M_HIV[, c("Th1", "Th2", "Th17")])
+regulatorySumHIV = sum(M_HIV[, c("Th1R", "Th2R", "iTreg", "IL10+", "IL10+TGFB+")])
+
+effectorSumHIV / regulatorySumHIV
 # to compensate for Insulin: Use GATA3 (gene 3) => 0.6 eff/reg  (basically deletes Th2 (effector) cell types)
 
 
